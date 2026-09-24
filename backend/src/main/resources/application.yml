@@ -1,0 +1,76 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notifications}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+server:
+  port: ${PORT:8080}
+
+app:
+  rate-limit:
+    requests-per-minute: 100
+  notification:
+    max-retries: 3
+    batch-size: 20
+    processor-interval-ms: 5000
+  worker:
+    pool-size: 10
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:8080}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        # Opens after 5 consecutive failures in a 10-call sliding window
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        # Half-open: allow 3 probe calls after 30s in OPEN state
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      email-provider:
+        baseConfig: default
+      sms-provider:
+        baseConfig: default
+      push-provider:
+        baseConfig: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [tenantId=%X{tenantId}] [campaignId=%X{campaignId}] %logger{36} - %msg%n"
+  level:
+    io.github.marcussi02: INFO
